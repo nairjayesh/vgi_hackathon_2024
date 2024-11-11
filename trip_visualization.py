@@ -4,6 +4,10 @@ import streamlit
 import time 
 import numpy 
 
+
+# Set Streamlit to use the full width of the page
+streamlit.set_page_config(layout="wide")
+
 # 0_ DATA PREPROCESSING 
 table1 = pandas.read_excel("./FLEXI_bus_stops.xls")
 table2 = pandas.read_excel("./FLEXI_trip_data.xls")
@@ -33,6 +37,8 @@ origin_destination_pair = merged_data.groupby(['pickup_index', 'pickup_name', 'p
 
 # 1_ TRIP DATA VISUALIZATION 
 
+
+
 """
 We use an arc layer here to understand trips wrt frequency, below we will use an alternate 
 method to understand trip wrt time, but this can be used as well. 
@@ -55,58 +61,88 @@ min_frequency = df_test["Frequency"].min()
 df_test["height"] = df_test["Frequency"] / (max_frequency) * 2
 # FIRST CREATE A MAP 
 
-streamlit.title("Trip Vislualization with Frequency threshold")
-frequency_threshold = streamlit.slider("Frequency", min_frequency, max_frequency, min_frequency)
 
-filtered_df = df_test[df_test["Frequency"] >= frequency_threshold]
+streamlit.markdown("<h1 style='text-align: center;'>Trip Visualization and Data Analysis</h1>", unsafe_allow_html=True)
 
 
-# CREATE A MINIMAL VIEW STATE: 
-INITIAL_VIEW_STATE = pydeck.ViewState(
-    latitude=filtered_df["pickup_latitude"].mean(), 
-    longitude=filtered_df["pickup_longitude"].mean(),
-    zoom=11, 
-    pitch=60,
-    bearing=180 
-)
+col1, col2 = streamlit.columns([2.8, 1.2])
+
+with col1:
+    streamlit.subheader("Trip Vislualization with Frequency threshold")
+    frequency_threshold = streamlit.slider("Frequency", min_frequency, max_frequency, min_frequency)
+
+    filtered_df = df_test[df_test["Frequency"] >= frequency_threshold]
 
 
-# CREATE A MINIMAL ARCLAYER 
-arc_layer = pydeck.Layer(
-    "ArcLayer", 
-    data=filtered_df, 
-    get_source_position=["pickup_longitude", "pickup_latitude"], 
-    get_target_position=["longitude_dropoff", "latitude_dropoff"],
-    get_height="height", 
-    get_width=1,
-    get_tilt=15, 
-    get_source_color=[255,0,0, 140], 
-    get_target_color=[0,0,255,140],
-    pickable=True, 
-    auto_highlight=True,
-) 
+    # CREATE A MINIMAL VIEW STATE: 
+    INITIAL_VIEW_STATE = pydeck.ViewState(
+        latitude=filtered_df["pickup_latitude"].mean(), 
+        longitude=filtered_df["pickup_longitude"].mean(),
+        zoom=11, 
+        pitch=50,
+        bearing=180 
+    )
 
 
-tooltip = {
-    "html": "<b>Frequency:</b> {Frequency}<br/>"
-            "<b>Pickup:</b> [{pickup_name}]<br/>"
-            "<b>Dropoff:</b> [{name_dropoff}]",
-    "style": {
-        "backgroundColor": "steelblue",
-        "color": "white",
-        "fontSize": "12px",
-        "border": "1px solid gray"
+    # CREATE A MINIMAL ARCLAYER 
+    arc_layer = pydeck.Layer(
+        "ArcLayer", 
+        data=filtered_df, 
+        get_source_position=["pickup_longitude", "pickup_latitude"], 
+        get_target_position=["longitude_dropoff", "latitude_dropoff"],
+        get_height="height", 
+        get_width=3,
+        get_tilt=25, 
+        get_source_color=[255,0,0, 140], 
+        get_target_color=[0,0,255,140],
+        pickable=True, 
+        auto_highlight=True,
+    ) 
+
+
+    tooltip = {
+        "html": "<b>Frequency:</b> {Frequency}<br/>"
+                "<b>Pickup:</b> [{pickup_name}]<br/>"
+                "<b>Dropoff:</b> [{name_dropoff}]",
+        "style": {
+            "backgroundColor": "steelblue",
+            "color": "white",
+            "fontSize": "12px",
+            "border": "1px solid gray"
+        }
     }
-}
 
-deck = pydeck.Deck(
-    layers=[arc_layer],
-    initial_view_state=INITIAL_VIEW_STATE,
-    map_style="dark", 
-    tooltip=tooltip
-) 
+    deck = pydeck.Deck(
+        layers=[arc_layer],
+        initial_view_state=INITIAL_VIEW_STATE,
+        map_style="light", 
+        tooltip=tooltip
+    ) 
 
-streamlit.pydeck_chart(deck)
+    streamlit.pydeck_chart(deck)
+
+with col2:
+    # streamlit.header("Top 5 Pickup-Dropoff Pairs")
+    streamlit.subheader("Top 5 Pickup-Dropoff Pairs")
+    top_5_pairs = origin_destination_pair.head(5)
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.write("")
+    streamlit.table(
+        top_5_pairs[['pickup_name', 'name_dropoff', 'Frequency']].rename(
+            columns={
+                'pickup_name': 'Pickup Location',
+                'name_dropoff': 'Dropoff Location'
+            }
+        )
+    )
 
 # 1.2 BRUSHING EFFECT FOR PATTERNS 
 
