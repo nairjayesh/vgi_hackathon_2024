@@ -33,6 +33,22 @@ origin_destination_pair = merged_data.groupby(['pickup_index', 'pickup_name', 'p
 
 # 1_ TRIP DATA VISUALIZATION 
 
+"""
+We use an arc layer here to understand trips wrt frequency, below we will use an alternate 
+method to understand trip wrt time, but this can be used as well. 
+
+Ignore 1.2 It's still an experimental visualization to try in case we want later. 
+
+To run, just type in the CLI: 
+streamlit run trip_visualization.py 
+
+Play with the Frequency slider to see how the trips are scheduled. 
+
+NOTE: When we see the figures, we might think --> Eg: From Kinding to Bilengries: Why did we get 100? 
+Is it a popular route for daily commute? -- what's our daily average like? (V. V. Interesting to answer)
+Or do we have a specific period when most of the ride happened? 
+"""
+
 df_test = origin_destination_pair #.nlargest(10, 'Frequency') 
 max_frequency = df_test["Frequency"].max()
 min_frequency = df_test["Frequency"].min() 
