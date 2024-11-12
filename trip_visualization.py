@@ -29,6 +29,8 @@ merged_data['Pickup Hour'] = merged_data['Actual Pickup Time'].dt.hour
 merged_data['Dropoff Hour'] = merged_data['Actual Dropoff Time'].dt.hour
 merged_data['Pickup Day'] = merged_data['Actual Pickup Time'].dt.dayofweek  # 0 = Monday, 1= Tuesday, 2 = Wednesday ... 
 
+merged_data = merged_data[merged_data['Passenger status'] != 'Cancelled']
+
 origin_destination_pair = merged_data.groupby(['pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude', 'index_dropoff', \
                                                'name_dropoff', 'district_dropoff', 'latitude_dropoff', 'longitude_dropoff']) \
                                             .size() \
@@ -79,7 +81,7 @@ def trip_data_viz():
             latitude=filtered_df["pickup_latitude"].mean(), 
             longitude=filtered_df["pickup_longitude"].mean(),
             zoom=11, 
-            pitch=50,
+            pitch=5,
             bearing=180 
         )
 
