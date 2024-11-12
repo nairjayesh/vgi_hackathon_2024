@@ -28,6 +28,8 @@ def load_dataset():
     # 0_ DATA PREPROCESSING 
     table1 = pandas.read_excel(Path("./dataset/FLEXI_bus_stops.xls"))
     table2 = pandas.read_excel(Path("./dataset/FLEXI_trip_data.xls"))
+    # weather_data
+    table_3 = pandas.read_excel(Path("./dataset/weather_data.xlsx"))
 
     merged_data = table2.merge(table1, left_on="Pickup ID", right_on="index") \
                         .merge(table1, left_on="Dropoff ID", right_on="index", suffixes=('', '_dropoff')) \
@@ -47,7 +49,15 @@ def load_dataset():
     merged_data['Pickup Day'] = merged_data['Actual Pickup Time'].dt.dayofweek  # 0 = Monday, 1= Tuesday, 2 = Wednesday ... 
 
     merged_data = merged_data[merged_data['Passenger status'] != 'Cancelled']
-
+    
+    # merge weather_data
+    merged_data = merged_data.merge(
+        table_3[['booking_id', 'weather_max_temp', 'weather_min_temp', 'weather_status', 'weather_chance_of_precipitation']],
+        how='left',  # Use 'left' join to keep all rows in df1 and add weather data where available
+        left_on='Booking ID',
+        right_on='booking_id'
+    )
+    merged_data = merged_data.drop(columns=['booking_id'])
     return merged_data
 
 
@@ -112,7 +122,7 @@ def main():
         min_frequency = df_test["Frequency"].min() 
         df_test["height"] = df_test["Frequency"] / (max_frequency) * 2
         filtered_df = df_test[df_test["Frequency"] >= frequency_threshold]
-        print(filtered_df)
+
         # PyDeck
         # CREATE A MINIMAL VIEW STATE: 
         INITIAL_VIEW_STATE = pydeck.ViewState(
