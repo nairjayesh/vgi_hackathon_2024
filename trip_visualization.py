@@ -81,7 +81,7 @@ def trip_data_viz():
             latitude=filtered_df["pickup_latitude"].mean(), 
             longitude=filtered_df["pickup_longitude"].mean(),
             zoom=11, 
-            pitch=5,
+            pitch=200,
             bearing=180 
         )
 
