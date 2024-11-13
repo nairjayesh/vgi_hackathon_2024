@@ -1,0 +1,4 @@
+pandas
+streamlit
+pydeck
+hydralit_components
