@@ -53,3 +53,10 @@ def create_map1(data, start_time, end_time, frequency_threshold, days_of_week):
     deck = pdk.Deck(layers=[arc_layer], initial_view_state=INITIAL_VIEW_STATE, map_style="road", tooltip=tooltip)
 
     st.pydeck_chart(deck)
+
+
+def map2():
+    pass
+
+def map3():
+    pass
