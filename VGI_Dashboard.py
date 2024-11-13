@@ -32,6 +32,7 @@ def main():
             frequency_threshold = st.slider("Frequency", min_value=0, max_value=100, value=10, step=1)
         with col4:
             days_of_week = st.multiselect("Days of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+        
 
         dataset = dp.load_dataset()
         viz.create_map1(dataset, start_time_hour, end_time_hour, frequency_threshold, days_of_week)

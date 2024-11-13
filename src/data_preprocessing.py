@@ -1,8 +1,9 @@
 import pandas
 from pathlib import Path
 import os
+import streamlit
 
-
+@streamlit.cache_data
 def load_dataset():
     # # 0_ DATA PREPROCESSING 
     table1 = pandas.read_excel(Path("./dataset/FLEXI_bus_stops.xls"))
