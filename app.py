@@ -82,7 +82,7 @@ def main():
         # Ignore 1.2 It's still an experimental visualization to try in case we want later. 
 
         # To run, just type in the CLI: 
-        # streamlit run trip_visualization.py 
+        # streamlit run app.py 
 
         # Play with the Frequency slider to see how the trips are scheduled. 
 
@@ -129,7 +129,7 @@ def main():
             latitude=filtered_df["pickup_latitude"].mean(), 
             longitude=filtered_df["pickup_longitude"].mean(),
             zoom=11, 
-            pitch=5,
+            pitch=50,
             bearing=180 
         )
         # CREATE A MINIMAL ARCLAYER 
