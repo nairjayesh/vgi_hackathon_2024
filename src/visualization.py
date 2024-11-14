@@ -212,26 +212,27 @@ def demand_heatmap(dataset, time_hour, day_of_week):
                     # <img src='""" + get_icon_url("{No_of_Passengers}") + """'
                     # alt='icon' width='16' height='16'><br/>
                     #                <b><span style='vertical-align: middle, margin-left: 5px;'> {Occupancy_rate}</span><br/>
-    # get_icon_url(No_of_Passengers)
+    #get_icon_url(No_of_Passengers)
     print(demand_data.head())
-    # print(demand_data.columns)
-    # print(demand_data['No_of_Passengers'])
+    print(demand_data.columns)
+    print(demand_data['No_of_Passengers'])
+    tooltip_html = """
+                    <b>Stop Name :</b> {pickup_name}<br/>
+                    <img src="{occupancy_icon}" alt="icon" width="16" height="16"><br/>
+                    """
     tooltip = {
-        "html": """<b>Stop Name :</b> {pickup_name}<br/>
-                <img src='{occupancy_icon}' 
-                alt='icon' width='16' height='16'><br/>
-                <b>Passengers:</b> {No_of_Passengers}<br/>""",
+        "html": tooltip_html,
         "style": {
-            "backgroundColor": "rgba(255, 255, 255, 0.6)",  # White background for a clean look
-            "background": "linear-gradient(145deg, rgba(243, 244, 246, 0.6), rgba(226, 232, 240, 0.6))",  # Soft gradient for a modern feel
-            "color": "#333333",  # Darker text for better readability
-            "fontFamily": "Helvetica Neue, Arial, sans-serif",  # Apple-like font
-            "fontSize": "14px",  # Slightly larger text
-            "borderRadius": "12px",  # Rounded corners for a smooth look
-            "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)",  # Soft shadow for depth
-            "padding": "10px 15px",  # More padding for readability
-            "border": "none",  # Remove border for a cleaner design
-            "textAlign": "left",  # Center the text for balance
+            "backgroundColor": "rgba(255, 255, 255, 0.6)",  
+            "background": "linear-gradient(145deg, rgba(243, 244, 246, 0.6), rgba(226, 232, 240, 0.6))",  
+            "color": "#333333",  
+            "fontFamily": "Helvetica Neue, Arial, sans-serif", 
+            "fontSize": "14px",  
+            "borderRadius": "12px",  
+            "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)",   
+            "padding": "10px 15px",  
+            "border": "none", 
+            "textAlign": "left", 
         }
     }
 
