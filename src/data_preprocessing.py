@@ -11,7 +11,7 @@ def load_dataset():
     # weather_data
     table_3 = pandas.read_excel(Path("./dataset/weather_data.xlsx"))
     # route_data
-    table_4 = pandas.read_excel(Path("./dataset/updated_route_data.xlsx"))
+    table_4 = pandas.read_excel(Path("./dataset/route_data.xlsx"))
 
     merged_data = table2.merge(table1, left_on="Pickup ID", right_on="index") \
                         .merge(table1, left_on="Dropoff ID", right_on="index", suffixes=('', '_dropoff')) \

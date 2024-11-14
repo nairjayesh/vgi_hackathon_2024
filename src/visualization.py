@@ -54,6 +54,17 @@ def create_map1(data, start_time, end_time, frequency_threshold, days_of_week):
 
     st.pydeck_chart(deck)
 
+    st.title("Top 5 Pickup-Dropoff Pairs")
+    top_5_pairs = origin_destination_pair.head(5)
+    st.table(
+        top_5_pairs[['pickup_name', 'name_dropoff', 'Frequency']].rename(
+            columns={
+                'pickup_name': 'Pickup Location',
+                'name_dropoff': 'Dropoff Location'
+            }
+        )
+    )
+
 
 def demand_heatmap(dataset, time_hour, day_of_week):
     demand_data = dataset[dataset['Pickup Hour'] == time_hour]
