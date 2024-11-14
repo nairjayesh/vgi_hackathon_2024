@@ -103,10 +103,34 @@ def demand_heatmap(dataset, time_hour, day_of_week):
         color_range=color_range 
     )
 
+    scatterplot_layer = pdk.Layer(
+        "ScatterplotLayer",
+        demand_data,
+        get_position=["pickup_longitude", "pickup_latitude"],  # Longitude and Latitude for scatter points
+        get_fill_color="[200, 30, 0, 160]",  # Red color with some opacity (RGBA)
+        get_radius=100,  # Radius of each scatter point
+        pickable=True,  # Make the points interactive for selection
+        opacity=0.7  # Set opacity to make it semi-transparent
+    )
+
+    tooltip = {
+        "html": """<b>Passengers:</b> {No_of_Passengers}<br/>
+                <img src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cpath%20fill%3D%22%23D7DCE1%22%20d%3D%22M0%2013c0%20.55.45%201%201%201h4c.583%200%201.024-.47%201.024-.988L6%209c0-1.037-.964-2-2-2H2C.931%207%200%207.996%200%209zm7.514-5L7.5%2014H10c.55%200%201-.482%201-1V9c0-1.134-.862-2-1.996-2h-.486a.985.985%200%200%200-1.004%201m4.988%200-.002%206%202.496-.016c.55%200%201.004-.466%201.004-.984V9c0-1.134-.866-2-2-2h-.526c-.55%200-.972.45-.972%201M3.016%205C3.836%205%204.5%204.337%204.5%203.484%204.5%202.664%203.837%202%203.016%202S1.5%202.663%201.5%203.484C1.5%204.337%202.195%205%203.016%205m5.5%200C9.336%205%2010%204.337%2010%203.484%2010%202.664%209.337%202%208.516%202S7%202.663%207%203.484C7%204.337%207.695%205%208.516%205m4.968%200C14.337%205%2015%204.337%2015%203.484%2015%202.664%2014.337%202%2013.484%202%2012.664%202%2012%202.663%2012%203.484%2012%204.337%2012.663%205%2013.484%205%22%2F%3E%3Cpath%20fill%3D%22%23646973%22%20d%3D%22M0%2013c0%20.55.45%201%201%201h4c.583%200%201.024-.47%201.024-.988L6%209c0-1.037-.964-2-2-2H2C.931%207%200%207.996%200%209zm7.514-5L7.5%2014H10c.55%200%201-.482%201-1V9c0-1.134-.862-2-1.996-2h-.486a.985.985%200%200%200-1.004%201M3.016%205C3.836%205%204.5%204.337%204.5%203.484%204.5%202.664%203.837%202%203.016%202S1.5%202.663%201.5%203.484C1.5%204.337%202.195%205%203.016%205m5.5%200C9.336%205%2010%204.337%2010%203.484%2010%202.664%209.337%202%208.516%202S7%202.663%207%203.484C7%204.337%207.695%205%208.516%205%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E'
+                alt='icon' width='16' height='16'><br/>
+                <b>Pickup:</b> [{pickup_name}]<br/>""",
+        "style": {
+            "backgroundColor": "steelblue",
+            "color": "white",
+            "fontSize": "12px",
+            "border": "1px solid gray"
+        }
+    }
+
     deck = pdk.Deck(
-        layers=[heatmap_layer], 
+        layers=[heatmap_layer, scatterplot_layer], 
         initial_view_state=INITIAL_VIEW_STATE,
-        map_style="road"
+        map_style="road",
+        tooltip=tooltip
     )
 
     map_col, table_col = st.columns([3, 1])
