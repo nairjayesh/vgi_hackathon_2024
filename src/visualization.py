@@ -58,5 +58,102 @@ def create_map1(data, start_time, end_time, frequency_threshold, days_of_week):
 def map2():
     pass
 
-def map3():
-    pass
+def create_map3(route_dataset, start_time, end_time, days_of_week):
+    df_stops = dp.load_bus_data()
+
+    # filter by input
+    route_dataset = route_dataset[(route_dataset["Pickup Hour"] >= start_time) & (route_dataset["Dropoff Hour"] <= end_time)]
+    if days_of_week:
+        route_dataset = route_dataset[route_dataset["Actual Pickup Time"].dt.strftime('%A').isin(days_of_week)]
+    # for testing - only taking first 5 rows
+    df_with_routes = route_dataset.iloc[0:5]
+    df_with_routes = df_with_routes.groupby(['pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude', 'index_dropoff', \
+                                            'name_dropoff', 'district_dropoff', 'latitude_dropoff', 'longitude_dropoff', 'route', 'timestamps']) \
+                                  .size() \
+                                  .reset_index(name="Frequency") \
+                                  .sort_values(by='Frequency', ascending=False)
+
+    line_data = []
+    MAX_FREQ = int(df_with_routes["Frequency"].max())
+    for path, frequency in zip(df_with_routes["route"].apply(eval), df_with_routes["Frequency"]):  # Convert route strings to lists
+        total_segments = len(path) - 1
+        for i in range(total_segments):
+            start = path[i] + [i]
+            end = path[i + 1] + [i]
+                
+            line_data.append({
+                    "start": start,
+                    "end": end,
+                    "Frequency": frequency, 
+                    "color_val": (frequency / MAX_FREQ) * 10      # Segment index for fading  # Total segments to normalize
+            })
+
+    # # # RGBA value generated in Javascript by deck.gl's Javascript expression parser
+    # GET_COLOR_JS = [
+    #     "255 * (1 - segment_index / total_segments)",   # Red fades out along the path
+    #     "128 * (segment_index / total_segments)",       # Green increases
+    #     "255 * (segment_index / total_segments)",       # Blue increases
+    #     "255 * (1 - segment_index / total_segments)"    # Alpha decreases
+    # ]
+
+    JS_COLOR = [
+        "50 * color_val",        # Red intensity based on frequency
+        "255 * (1 - color_val)",   # Subdued green for lower frequencies
+        "50 * (1 - color_val)",   # Subdued blue for lower frequencies
+        "255 * color_val"         # Opacity based on frequency (fades lower frequencies)
+    ]
+
+    scatterplot = pdk.Layer(
+        "ScatterplotLayer",
+        df_stops,
+        radius_scale=4,
+        get_position=["longitude", "latitude"],
+        get_fill_color=[0, 0, 0],
+        get_radius=10,
+        pickable=True,
+    )
+
+    tooltip = {
+        "html": "</b>{name}<br/>",
+        "style": {
+            "backgroundColor": "black",
+            "color": "white",
+            "fontSize": "12px",
+            "padding": "5px", 
+            "borderRadius": "5px"
+        }
+    }
+
+    line_layer = pdk.Layer(
+            "LineLayer",
+            data=line_data,
+            get_source_position="start",
+            get_target_position="end",
+            get_color=JS_COLOR,
+            get_width=5,
+            width_scale=0.5,
+            highlight_color=[255, 255, 0],
+            auto_highlight=True,
+            opacity=0.8,
+        )
+
+    layers = [scatterplot, line_layer]
+
+    INITIAL_VIEW_STATE = pdk.ViewState(latitude=df_with_routes["pickup_latitude"].mean(), longitude=df_with_routes["pickup_longitude"].mean(), zoom=11, pitch=50)
+
+    r = pdk.Deck(layers=layers, initial_view_state=INITIAL_VIEW_STATE, map_style="light", tooltip=tooltip)
+    st.pydeck_chart(r)
+
+    ''' legend - seems not working, pydeck does not allow legends in map, next option is to overlay above map using streamlit '''
+    # legend_html = """
+    # <div style="position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.7); color: white; padding: 10px; border-radius: 5px; z-index: 1000;">
+    #     <h3>Legend</h3>
+    #     <p><strong>Black dots</strong> represent bus stops.</p>
+    #     <p><strong>Size of the dot</strong> indicates the number of occurrences.</p>
+    # </div>
+    # """
+    # # Render the legend as part of the Streamlit UI, positioned above the map
+    # st.markdown(legend_html, unsafe_allow_html=True)
+
+
+
