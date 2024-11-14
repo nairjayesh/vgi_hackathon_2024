@@ -2,8 +2,18 @@ import pandas as pd
 import pydeck as pdk
 import streamlit as st
 import pandas as pd
+import numpy as np
+import pandas
 import src.data_preprocessing as dp
 from src.utility import get_icon_url
+
+def calculate_color(color_val):
+    color_val = np.clip(color_val, 0, 1)
+    red = int(128 * np.sqrt(color_val))
+    green = int(255 * (1 - np.sqrt(color_val)))
+    blue = int(128 * (1 - np.sqrt(color_val)))
+    opacity = int(255 * np.sqrt(color_val))
+    return [red, green, blue, opacity]
 
 def create_map1(validated_trip_data, canceled_trip_data, start_time, end_time, frequency_threshold, days_of_week):
     day_mapping = {
@@ -170,8 +180,6 @@ def demand_heatmap(dataset, time_hour, day_of_week):
     # demand_data[['Occupancy_rate', 'Occupancy_icon']] = demand_data['No_of_Passengers'].apply(lambda x: pd.Series(get_icon_url(x)))
     demand_data['Occupancy_icon'] = demand_data['No_of_Passengers'].apply(get_icon_url)
 
-    print(demand_data.head())
-
     INITIAL_VIEW_STATE = pdk.ViewState(
         latitude=dataset["pickup_latitude"].mean(), 
         longitude=dataset["pickup_longitude"].mean(),
@@ -209,13 +217,11 @@ def demand_heatmap(dataset, time_hour, day_of_week):
         opacity=0  # Set opacity to make it semi-transparent
     )
 
-                    # <img src='""" + get_icon_url("{No_of_Passengers}") + """'
-                    # alt='icon' width='16' height='16'><br/>
-                    #                <b><span style='vertical-align: middle, margin-left: 5px;'> {Occupancy_rate}</span><br/>
+    # <img src='""" + get_icon_url("{No_of_Passengers}") + """'
+    # alt='icon' width='16' height='16'><br/>
+    #                <b><span style='vertical-align: middle, margin-left: 5px;'> {Occupancy_rate}</span><br/>
     # get_icon_url(No_of_Passengers)
-    print(demand_data.head())
-    # print(demand_data.columns)
-    # print(demand_data['No_of_Passengers'])
+
     tooltip = {
         "html": """<b>Stop Name :</b> {pickup_name}<br/>
                 <img src='{occupancy_icon}' 
@@ -287,27 +293,53 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
     route_dataset = route_dataset[(route_dataset["Pickup Hour"] >= start_time) & (route_dataset["Dropoff Hour"] <= end_time)]
     if days_of_week:
         route_dataset = route_dataset[route_dataset["Actual Pickup Time"].dt.strftime('%A').isin(days_of_week)]
-    # for testing - only taking first 5 rows
-    df_with_routes = route_dataset.iloc[0:5]
-    df_with_routes = df_with_routes.groupby(['pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude', 'index_dropoff', \
-                                            'name_dropoff', 'district_dropoff', 'latitude_dropoff', 'longitude_dropoff', 'route', 'timestamps']) \
-                                  .size() \
-                                  .reset_index(name="Frequency") \
-                                  .sort_values(by='Frequency', ascending=False)
+
+    # fetch time of travel in minutes 
+    route_dataset['Actual Pickup Time'] = pandas.to_datetime(route_dataset['Actual Pickup Time'])
+    route_dataset['Actual Dropoff Time'] = pandas.to_datetime(route_dataset['Actual Dropoff Time'])
+    route_dataset['travel_time'] = (route_dataset['Actual Dropoff Time'] - route_dataset['Actual Pickup Time']).dt.total_seconds() / 60
+
+    df_with_routes = route_dataset.groupby(
+            ['pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude', 
+            'index_dropoff', 'name_dropoff', 'district_dropoff', 'latitude_dropoff', 'longitude_dropoff', 
+            'route']
+        ).agg(
+            Frequency=('route', 'size'),        # Frequency column based on the count
+            passenger_count=('Passengers', 'sum'),  # Sum of passengers
+            travel_time=('travel_time', 'sum')  # Sum of total_time
+        ).reset_index().sort_values(by='Frequency', ascending=False)
+
+    # calculate revenue (2 euro per person)
+    df_with_routes['revenue'] = df_with_routes['passenger_count'] * 2
+    df_with_routes['avg_passenger_count'] = df_with_routes['passenger_count'] / df_with_routes['Frequency']
+    df_with_routes['avg_revenue'] = 2 * df_with_routes['avg_passenger_count']
+    df_with_routes['avg_travel_time'] = df_with_routes['travel_time'] / df_with_routes['Frequency']
 
     line_data = []
-    MAX_FREQ = int(df_with_routes["Frequency"].max())
-    for path, frequency in zip(df_with_routes["route"].apply(eval), df_with_routes["Frequency"]):  # Convert route strings to lists
+    MAX_FREQ = int(df_with_routes["revenue"].max())
+    for path, pickup_name, frequency, revenue, avg_passenger_count, avg_revenue, avg_travel_time in zip(df_with_routes["route"].apply(eval), 
+                                                    df_with_routes["pickup_name"],
+                                                    df_with_routes["Frequency"],
+                                                    df_with_routes["revenue"],
+                                                    df_with_routes["avg_passenger_count"],
+                                                    df_with_routes["avg_revenue"],
+                                                    df_with_routes["avg_travel_time"]
+                                                    ):  # Convert route strings to lists
         total_segments = len(path) - 1
         for i in range(total_segments):
             start = path[i] + [i]
             end = path[i + 1] + [i]
-                
+
             line_data.append({
                     "start": start,
                     "end": end,
-                    "Frequency": frequency, 
-                    "color_val": (frequency / MAX_FREQ) * 10      # Segment index for fading  # Total segments to normalize
+                    "revenue": revenue, 
+                    "color": calculate_color(revenue / MAX_FREQ),      # Segment index for fading  # Total segments to normalize
+                    "frequency": frequency,
+                    "avg_passenger_count": avg_passenger_count,
+                    "avg_revenue": avg_revenue,
+                    "avg_travel_time": avg_travel_time,
+                    "pickup_name": pickup_name
             })
 
     # # # RGBA value generated in Javascript by deck.gl's Javascript expression parser
@@ -318,24 +350,20 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
     #     "255 * (1 - segment_index / total_segments)"    # Alpha decreases
     # ]
 
+    # JS_COLOR = [
+    #     "50 * color_val",        # Red intensity based on frequency
+    #     "255 * (1 - color_val)",   # Subdued green for lower frequencies
+    #     "50 * (1 - color_val)",   # Subdued blue for lower frequencies
+    #     "255 * color_val"         # Opacity based on frequency (fades lower frequencies)
+    # ]
     JS_COLOR = [
-        "50 * color_val",        # Red intensity based on frequency
-        "255 * (1 - color_val)",   # Subdued green for lower frequencies
-        "50 * (1 - color_val)",   # Subdued blue for lower frequencies
-        "255 * color_val"         # Opacity based on frequency (fades lower frequencies)
+        "128 * Math.pow(color_val, 0.5)",         # // Red intensity with a square root to soften the transition
+        "255 * (1 - Math.pow(color_val, 0.5))",   # // Subdued green, square-root for a more gradual shift
+        "128 * (1 - Math.pow(color_val, 0.5))",   # // Subdued blue, also square-root for smoother transition
+        "255 * Math.pow(color_val, 0.5)"          # // Opacity fades more gradually
     ]
 
-    scatterplot = pdk.Layer(
-        "ScatterplotLayer",
-        df_stops,
-        radius_scale=4,
-        get_position=["longitude", "latitude"],
-        get_fill_color=[0, 0, 0],
-        get_radius=10,
-        pickable=True,
-    )
-
-    tooltip = {
+    scatterplot_tooltip = {
         "html": "</b>{name}<br/>",
         "style": {
             "backgroundColor": "black",
@@ -346,33 +374,73 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
         }
     }
 
+    scatterplot = pdk.Layer(
+        "ScatterplotLayer",
+        df_stops,
+        radius_scale=4,
+        get_position=["longitude", "latitude"],
+        get_fill_color=[255, 255, 255],
+        get_radius=10,
+        pickable=True,
+        tooltip=scatterplot_tooltip
+    )
+
+    linelayer_tooltip = {
+        "html": """</b>Pickup = {pickup_name}<br/><br/>
+                </b>Dropoff = {name_dropoff}<br/><br/>
+                </b>Frequency = {Frequency}<br/><br/>
+                </b>Avg Passenger Count = {avg_passenger_count}<br/><br/>
+                </b>Avg Revenue = {avg_revenue}<br/><br/>
+                </b>Avg Time Taken = {avg_travel_time}<br/><br/>
+                """,
+        "style": {
+            "backgroundColor": "black",
+            "color": "white",
+            "fontSize": "12px",
+            "padding": "5px", 
+            "borderRadius": "5px"
+        }
+    }
+
     line_layer = pdk.Layer(
-            "LineLayer",
-            data=line_data,
-            get_source_position="start",
-            get_target_position="end",
-            get_color=JS_COLOR,
-            get_width=5,
-            width_scale=0.5,
-            highlight_color=[255, 255, 0],
-            auto_highlight=True,
-            opacity=0.8,
-        )
+        "LineLayer",
+        data=line_data,
+        get_source_position="start",
+        get_target_position="end",
+        get_color="color",
+        get_width=5,
+        width_scale=0.5,
+        highlight_color=[255, 255, 0],
+        auto_highlight=True,
+        opacity=0.8,
+        pickable=True,
+        tooltip=linelayer_tooltip
+    )
 
     layers = [scatterplot, line_layer]
 
     INITIAL_VIEW_STATE = pdk.ViewState(latitude=df_with_routes["pickup_latitude"].mean(), longitude=df_with_routes["pickup_longitude"].mean(), zoom=11, pitch=50)
 
-    r = pdk.Deck(layers=layers, initial_view_state=INITIAL_VIEW_STATE, map_style="light", tooltip=tooltip)
+    r = pdk.Deck(layers=layers, initial_view_state=INITIAL_VIEW_STATE, map_style="dark")
     st.pydeck_chart(r)
 
-    ''' legend - seems not working, pydeck does not allow legends in map, next option is to overlay above map using streamlit '''
-    # legend_html = """
-    # <div style="position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.7); color: white; padding: 10px; border-radius: 5px; z-index: 1000;">
-    #     <h3>Legend</h3>
-    #     <p><strong>Black dots</strong> represent bus stops.</p>
-    #     <p><strong>Size of the dot</strong> indicates the number of occurrences.</p>
-    # </div>
-    # """
-    # # Render the legend as part of the Streamlit UI, positioned above the map
-    # st.markdown(legend_html, unsafe_allow_html=True)
+    df_with_routes = df_with_routes.sort_values(by="revenue", ascending=False)
+    df_with_routes = df_with_routes[["pickup_name", "pickup_district", "name_dropoff", "district_dropoff", "Frequency",
+                                     "passenger_count", "revenue", "avg_travel_time"]]
+    df_with_routes = df_with_routes.head()
+    
+    st.title("Valuable Routes")
+    st.table(
+        df_with_routes.rename(
+                columns={
+                    'pickup_name': 'Pickup Stop',
+                    'pickup_district': 'Pickup District',
+                    'name_dropoff': 'Dropoff Stop',
+                    'district_dropoff': 'Dropoff District',
+                    'Frequency': 'Trip Frequency',
+                    'passenger_count': 'Total Passenger Count',
+                    'revenue': 'Total Revenue',
+                    'avg_travel_time': 'Avg Travel Taken',
+                }
+        )
+    )
