@@ -1,49 +1,72 @@
+import pandas as pd
 import pydeck as pdk
 import streamlit as st
 import src.data_preprocessing as dp
 from src.utility import get_icon_url
 
-def create_map1(data, start_time, end_time, frequency_threshold, days_of_week):
-    data = data[(data["Pickup Hour"] >= start_time) & (data["Dropoff Hour"] <= end_time)]
+def create_map1(validated_trip_data, canceled_trip_data, start_time, end_time, frequency_threshold, days_of_week):
+    day_mapping = {
+    "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+    "Friday": 4, "Saturday": 5, "Sunday": 6
+    }
+
+    initial_latitude = validated_trip_data["pickup_latitude"].mean() 
+    initial_longitude = validated_trip_data["pickup_longitude"].mean() 
+    validated_trip_data = validated_trip_data[(validated_trip_data["Pickup Hour"] >= start_time) & (validated_trip_data["Dropoff Hour"] <= end_time)]
+    canceled_trip_data = canceled_trip_data[(canceled_trip_data["Pickup Hour"] >= start_time) & (canceled_trip_data["Dropoff Hour"] <= end_time)]
+
     if days_of_week:
-        data = data[data["Actual Pickup Time"].dt.strftime('%A').isin(days_of_week)]
+        selected_days = [day_mapping[day] for day in days_of_week]
+        validated_trip_data = validated_trip_data[validated_trip_data["Pickup Day"].isin(selected_days)]
+        canceled_trip_data = canceled_trip_data[canceled_trip_data["Pickup Day"].isin(selected_days)]
+    validated_summary = validated_trip_data.groupby(['pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude', 'index_dropoff', \
+                                            'name_dropoff', 'district_dropoff', 'latitude_dropoff', 'longitude_dropoff'
+                                            ]).agg(
+                                                Frequency=('Booking ID', 'size'),
+                                                Total_Passengers=('Passengers', 'sum')
+                                            ).reset_index().sort_values(by='Frequency', ascending=False)
+    
+    
+    canceled_summary = canceled_trip_data.groupby([
+        'pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude',
+        'index_dropoff', 'name_dropoff', 'district_dropoff', 'latitude_dropoff', 'longitude_dropoff'
+    ]).agg(
+        Canceled_Count=('Booking ID', 'size')          # Count of canceled trips
+    ).reset_index()
 
-    origin_destination_pair = data.groupby(['pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude', 'index_dropoff', \
-                                            'name_dropoff', 'district_dropoff', 'latitude_dropoff', 'longitude_dropoff']) \
-                                  .size() \
-                                  .reset_index(name="Frequency") \
-                                  .sort_values(by='Frequency', ascending=False)
-
-    max_frequency = origin_destination_pair["Frequency"].max()
-    origin_destination_pair["height"] = origin_destination_pair["Frequency"] / max_frequency * 2
-    filtered_df = origin_destination_pair[origin_destination_pair["Frequency"] >= frequency_threshold]
-
-    INITIAL_VIEW_STATE = pdk.ViewState(
-        latitude=filtered_df["pickup_latitude"].mean(), 
-        longitude=filtered_df["pickup_longitude"].mean(),
-        zoom=11, 
-        pitch=50,
-        bearing=180 
+    combined_summary = pd.merge(
+        validated_summary,
+        canceled_summary,
+        on=['pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude', 
+            'index_dropoff', 'name_dropoff', 'district_dropoff', 'latitude_dropoff', 'longitude_dropoff'],
+        how='left'  # Use left join to retain validated trips even if no cancellations
     )
 
-    arc_layer = pdk.Layer(
-        "ArcLayer",
-        data=filtered_df,
-        get_source_position=["pickup_longitude", "pickup_latitude"],
-        get_target_position=["longitude_dropoff", "latitude_dropoff"],
-        get_height="height",
-        get_width=3,
-        get_tilt=25,
-        get_source_color=[255, 0, 0, 140],
-        get_target_color=[0, 0, 255, 140],
-        pickable=True,
-        auto_highlight=True,
-    )
+    combined_summary['Canceled_Count'] = combined_summary['Canceled_Count'].fillna(0)
+
+    combined_summary["Total_trip"] = (combined_summary["Frequency"] + combined_summary['Canceled_Count'] ).round(2)
+
+    combined_summary['Cancellation_Rate'] = (combined_summary['Canceled_Count'] / 
+                                             (combined_summary['Frequency'] + 
+                                              combined_summary['Canceled_Count']) * 100
+                                            ).round(2)
+
+    max_frequency = combined_summary["Frequency"].max()
+    combined_summary["height"] = combined_summary["Frequency"] / max_frequency * 2
+    filtered_df = combined_summary[combined_summary["Frequency"] >= frequency_threshold]
+    
+    GET_WIDTH = [
+        "Total_Passengers / 5" 
+    ]
 
     tooltip = {
-        "html": "<b>Frequency:</b> {Frequency}<br/>"
-                "<b>Pickup:</b> [{pickup_name}]<br/>"
-                "<b>Dropoff:</b> [{name_dropoff}]",
+        "html": "<b>Completed Trips:</b> {Frequency}<br/>"
+                "<b>Cancellation_rate:</b>{Cancellation_Rate} %<br/>"
+                "<b>Total Bookings:</b>{Total_trip}<br/>"
+                "<b>Pickup:</b> {pickup_name}<br/>"
+                "<b>Dropoff:</b> {name_dropoff}<br/>"
+                "<b>Passengers:</b>{Total_Passengers}"
+                ,
         "style": {
             "backgroundColor": "rgba(255, 255, 255, 0.6)",  # White background for a clean look
             "background": "linear-gradient(145deg, rgba(243, 244, 246, 0.6), rgba(226, 232, 240, 0.6))",  # Soft gradient for a modern feel
@@ -57,17 +80,66 @@ def create_map1(data, start_time, end_time, frequency_threshold, days_of_week):
             "textAlign": "left",  # Center the text for balance
         }
     }
-    deck = pdk.Deck(layers=[arc_layer], initial_view_state=INITIAL_VIEW_STATE, map_style="road", tooltip=tooltip)
 
+    INITIAL_VIEW_STATE = pdk.ViewState(
+            latitude=initial_latitude,
+            longitude=initial_longitude,
+            zoom=11, 
+            pitch=50,
+            bearing=180 
+        )
+    valid_rows = filtered_df.dropna(subset=["pickup_latitude", "pickup_longitude", "longitude_dropoff", "latitude_dropoff"]) 
+
+    if  not valid_rows.empty:  
+        arc_layer = pdk.Layer(
+            "ArcLayer",
+            data=filtered_df,
+            get_source_position=["pickup_longitude", "pickup_latitude"],
+            get_target_position=["longitude_dropoff", "latitude_dropoff"],
+            get_height="height",
+            get_width=GET_WIDTH,
+            get_tilt=25,
+            get_source_color=[255, 0, 0, 140],
+            get_target_color=[0, 0, 255, 140],
+            pickable=True,
+            auto_highlight=True,
+        )
+
+        deck = pdk.Deck(layers=[arc_layer], initial_view_state=INITIAL_VIEW_STATE, map_style="road", tooltip=tooltip)
+
+    else:
+        empty_layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=validated_summary,
+        get_position=[0, 0],
+        get_color=[0, 0, 0, 0],
+        get_radius=0,
+    )
+    
+        deck = pdk.Deck(
+            layers=[empty_layer],
+            initial_view_state=INITIAL_VIEW_STATE,
+            map_style="road",
+            tooltip=tooltip
+        )    
+        
     st.pydeck_chart(deck)
-
+    
+    #TODO: FIND A DEFAULT VALUE --> Where Viz looks good! 
     st.title("Top 5 Pickup-Dropoff Pairs")
-    top_5_pairs = origin_destination_pair.head(5)
+    top_5_pairs = combined_summary.head(5)
+    top_5_pairs['Frequency'] = top_5_pairs['Frequency'].astype(int)
+    top_5_pairs['Cancellation_Rate'] = top_5_pairs['Cancellation_Rate'].round(2)
+    top_5_pairs['Total_trip'] = top_5_pairs['Total_trip'].astype(int)
+
     st.table(
-        top_5_pairs[['pickup_name', 'name_dropoff', 'Frequency']].rename(
+        top_5_pairs[['pickup_name', 'name_dropoff', 'Frequency', 'Cancellation_Rate', 'Total_trip']].rename(
             columns={
                 'pickup_name': 'Pickup Location',
-                'name_dropoff': 'Dropoff Location'
+                'name_dropoff': 'Dropoff Location',
+                'Frequency': 'Completed Trips',
+                'Cancellation_Rate': 'Cancellation Rate (%)',
+                'Total_trip': 'Total Bookings'
             }
         )
     )
