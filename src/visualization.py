@@ -135,8 +135,8 @@ def demand_heatmap(dataset, time_hour, day_of_week):
                     # alt='icon' width='16' height='16'><br/>
     
     tooltip = {
-        "html": """<b>Passengers:</b> {No_of_Passengers}<br/>
-                   <b>Pickup:</b> [{pickup_name}]<br/>""",
+        "html": """<b>Stop Name :</b> {pickup_name}<br/>
+                   <b>Passengers:</b> {No_of_Passengers}<br/>""",
         "style": {
             "backgroundColor": "rgba(255, 255, 255, 0.6)",  # White background for a clean look
             "background": "linear-gradient(145deg, rgba(243, 244, 246, 0.6), rgba(226, 232, 240, 0.6))",  # Soft gradient for a modern feel

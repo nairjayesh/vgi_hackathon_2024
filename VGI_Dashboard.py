@@ -8,6 +8,7 @@ import src.visualization as viz
 import pandas
 import os
 import streamlit as st
+from src.utility import get_project_description
  
  
 # streamlit page start config - dont remove this 
@@ -26,7 +27,7 @@ def main():
     menu_id = hc.nav_bar(menu_definition=menu_data, home_name='Overview')
     if menu_id == "Overview":
         st.title("About the Project")
-        st.markdown("This initiative focuses on visualization of spatio-temporalbehavior of VGI-Flexi users as part VGI Challenge")
+        st.markdown(get_project_description())
     elif menu_id == "Demand Heatmap":
         st.title("Mapping Demand: Uncovering VGI FLEXI Bus Stop Hotspots")
         col1, col2 = st.columns([3, 1])
