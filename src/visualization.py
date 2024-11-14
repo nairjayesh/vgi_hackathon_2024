@@ -252,7 +252,7 @@ def demand_heatmap(dataset, time_hour, day_of_week):
         st.pydeck_chart(deck)
 
     with table_col:
-        st.markdown('<h2 style="font-size: 24px; color: #4CAF50;">Most Demanded Stops</h2>', unsafe_allow_html=True)
+        st.markdown('<h2 style="font-size: 24px; color: #00000;">Most Demanded Stops</h2>', unsafe_allow_html=True)
         top_5_pairs = demand_data.head()
         st.table(
             top_5_pairs[['pickup_name', 'demand']].rename(
