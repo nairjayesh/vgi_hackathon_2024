@@ -18,7 +18,7 @@ st.set_page_config(page_title="VGI Dashboard", page_icon="🚌", layout="wide")
 def main():
     menu_data = [
         {'icon': "fas fa-map-marked-alt", 'label': "Demand Heatmap"},
-        {'icon': "fas fa-chart-line", 'label': "Demand Trends"},
+        {'icon': "fas fa-chart-line", 'label': "Trip Analysis"},
         {'icon': "fas fa-road", 'label': "Route Visualization"},
         {'icon': "fas fa-file-alt", 'label': "Generate Report"}
     ]
@@ -48,10 +48,10 @@ def main():
             if "All" in days_of_week:
                 days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-        dataset = dp.load_dataset()
+        dataset, _ = dp.load_dataset()
         viz.demand_heatmap(dataset, time_hour, days_of_week)
-    elif menu_id == "Demand Trends":
-        st.title("Ingolstadt Bus GPS Data")
+    elif menu_id == "Trip Analysis":
+        st.title("Mapping Trip Insights")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             start_time_hour = st.slider("Pickup Time", min_value=0, max_value=23, value=0, step=2)
@@ -62,8 +62,8 @@ def main():
         with col4:
             days_of_week = st.multiselect("Days of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 
-        dataset = dp.load_dataset()
-        viz.create_map1(dataset, start_time_hour, end_time_hour, frequency_threshold, days_of_week)
+        validated_trip_dataset, canceled_trip_dataset = dp.load_dataset()
+        viz.create_map1(validated_trip_dataset, canceled_trip_dataset, start_time_hour, end_time_hour, frequency_threshold, days_of_week)
     elif menu_id == "Route Visualization":
         st.title("VGI Flexi Route Map")
         col1, col2, col3 = st.columns(3)
@@ -74,7 +74,7 @@ def main():
         with col3:
             days_of_week = st.multiselect("Days of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 
-        dataset = dp.load_dataset()
+        dataset, _ = dp.load_dataset()
         viz.create_map3(dataset, start_time_hour, end_time_hour, days_of_week)
     elif menu_id == "Generate Report":
         # download button
