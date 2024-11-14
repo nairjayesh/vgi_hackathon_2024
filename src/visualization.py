@@ -168,17 +168,19 @@ def demand_heatmap(dataset, time_hour, day_of_week):
         # Filter the DataFrame
         demand_data = demand_data[demand_data["Pickup Day"].isin(selected_days)] 
 
+    total_pickup_count = demand_data['Passengers'].count() 
     demand_data = demand_data.groupby(['pickup_index', 'pickup_name', 'pickup_district', 'pickup_latitude', 'pickup_longitude',\
                                         ])\
                                         .agg(
                                             No_of_Passengers = ('Passengers', 'sum'), 
-                                            Pickup_count=('Passengers', 'size')
-                                        ) \
+                                            Pickup_count=('Passengers', 'size'),
+                                            demand=('Passengers', lambda x: (x.size / total_pickup_count) * 100)
+                                            ) \
                                         .reset_index() \
                                         .sort_values(by='No_of_Passengers', ascending=False)
     
-    # demand_data[['Occupancy_rate', 'Occupancy_icon']] = demand_data['No_of_Passengers'].apply(lambda x: pd.Series(get_icon_url(x)))
-    demand_data['Occupancy_icon'] = demand_data['No_of_Passengers'].apply(get_icon_url)
+    demand_data[['Occupancy_rate', 'Occupancy_icon']] = demand_data['No_of_Passengers'].apply(lambda x: pd.Series(get_icon_url(x)))
+    
 
     INITIAL_VIEW_STATE = pdk.ViewState(
         latitude=dataset["pickup_latitude"].mean(), 
@@ -217,16 +219,10 @@ def demand_heatmap(dataset, time_hour, day_of_week):
         opacity=0  # Set opacity to make it semi-transparent
     )
 
-                    # <img src='""" + get_icon_url("{No_of_Passengers}") + """'
-                    # alt='icon' width='16' height='16'><br/>
-                    #                <b><span style='vertical-align: middle, margin-left: 5px;'> {Occupancy_rate}</span><br/>
-    #get_icon_url(No_of_Passengers)
-    print(demand_data.head())
-    print(demand_data.columns)
-    print(demand_data['No_of_Passengers'])
     tooltip_html = """
                     <b>Stop Name :</b> {pickup_name}<br/>
-                    <img src="{occupancy_icon}" alt="icon" width="16" height="16"><br/>
+                    <img src="{Occupancy_icon}" alt="icon" width="16" height="16">
+                    <b><span style='vertical-align: middle, margin-left: 5px;'> {Occupancy_rate}</span><br/>
                     """
     tooltip = {
         "html": tooltip_html,
@@ -259,12 +255,12 @@ def demand_heatmap(dataset, time_hour, day_of_week):
         st.markdown('<h2 style="font-size: 24px; color: #4CAF50;">Most Demanded Stops</h2>', unsafe_allow_html=True)
         top_5_pairs = demand_data.head()
         st.table(
-            top_5_pairs[['pickup_name', 'Pickup_count']].rename(
+            top_5_pairs[['pickup_name', 'demand']].rename(
                 columns={
                     'pickup_name': 'Stop Name',
-                    'Pickup_count': 'Number of Pickups'
+                    'demand': 'Demand %'
                 }
-            )
+            ).reset_index(drop=True)
         )
 
     st.markdown("""
