@@ -1,5 +1,6 @@
 import pydeck as pdk
 import streamlit as st
+import pandas as pd
 import src.data_preprocessing as dp
 from src.utility import get_icon_url
 
@@ -93,6 +94,11 @@ def demand_heatmap(dataset, time_hour, day_of_week):
                                         ) \
                                         .reset_index() \
                                         .sort_values(by='No_of_Passengers', ascending=False)
+    
+    # demand_data[['Occupancy_rate', 'Occupancy_icon']] = demand_data['No_of_Passengers'].apply(lambda x: pd.Series(get_icon_url(x)))
+    demand_data['Occupancy_icon'] = demand_data['No_of_Passengers'].apply(get_icon_url)
+
+    print(demand_data.head())
 
     INITIAL_VIEW_STATE = pdk.ViewState(
         latitude=dataset["pickup_latitude"].mean(), 
@@ -133,10 +139,16 @@ def demand_heatmap(dataset, time_hour, day_of_week):
 
                     # <img src='""" + get_icon_url("{No_of_Passengers}") + """'
                     # alt='icon' width='16' height='16'><br/>
-    
+                    #                <b><span style='vertical-align: middle, margin-left: 5px;'> {Occupancy_rate}</span><br/>
+    # get_icon_url(No_of_Passengers)
+    print(demand_data.head())
+    # print(demand_data.columns)
+    # print(demand_data['No_of_Passengers'])
     tooltip = {
         "html": """<b>Stop Name :</b> {pickup_name}<br/>
-                   <b>Passengers:</b> {No_of_Passengers}<br/>""",
+                <img src='{occupancy_icon}' 
+                alt='icon' width='16' height='16'><br/>
+                <b>Passengers:</b> {No_of_Passengers}<br/>""",
         "style": {
             "backgroundColor": "rgba(255, 255, 255, 0.6)",  # White background for a clean look
             "background": "linear-gradient(145deg, rgba(243, 244, 246, 0.6), rgba(226, 232, 240, 0.6))",  # Soft gradient for a modern feel
@@ -292,6 +304,3 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
     # """
     # # Render the legend as part of the Streamlit UI, positioned above the map
     # st.markdown(legend_html, unsafe_allow_html=True)
-
-
-
