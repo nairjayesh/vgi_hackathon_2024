@@ -1,4 +1,6 @@
 import streamlit as st
+from datetime import datetime
+import time as t
 import hydralit_components as hc
 from datetime import time
 import src.data_preprocessing as dp
@@ -8,20 +10,20 @@ import streamlit as st
  
 
 st.set_page_config(page_title="VGI Dashboard", page_icon="🚌", layout="wide")
-st.write("Current Working Directory:", os.getcwd())
 def main():
     menu_data = [
-        {'icon': "fas fa-chart-line", 'label': "Demand Trends"},
         {'icon': "fas fa-map-marked-alt", 'label': "Demand Heatmap"},
+        {'icon': "fas fa-chart-line", 'label': "Demand Trends"},
         {'icon': "fas fa-road", 'label': "Route Visualization"},
         {'icon': "fas fa-file-alt", 'label': "Generate Report"}
     ]
+
+    
     menu_id = hc.nav_bar(menu_definition=menu_data, home_name='Project Overview')
     if menu_id == "Project Overview":
         st.title("About the Project")
         st.markdown("This initiative focuses on visualization of spatio-temporalbehavior of VGI-Flexi users as part VGI Challenge")
     elif menu_id == "Demand Trends":
-        st.write("Current Working Directory:", os.getcwd())
         st.title("Ingolstadt Bus GPS Data")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -38,7 +40,28 @@ def main():
         viz.create_map1(dataset, start_time_hour, end_time_hour, frequency_threshold, days_of_week)
 
     elif menu_id == "Demand Heatmap":
-        pass
+        st.title("Mapping Demand: Uncovering VGI FLEXI Bus Stop Hotspots")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            time_hour = st.slider("Time of Day", min_value=0, max_value=23, value=6, step=1, format="%d:00")
+        with col2:
+            # days_of_week = st.multiselect("Day(s) of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+            # # If no days are selected, consider all days by default
+            # if not days_of_week:
+            #     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            days_of_week = st.multiselect(
+                    "Day(s) of Week", 
+                    ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+                    default=["All"]
+                )
+
+                # If "All" is selected, select all days
+            if "All" in days_of_week:
+                days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+        dataset = dp.load_dataset()
+        viz.demand_heatmap(dataset, time_hour, days_of_week)
 
     elif menu_id == "Route Visualization":
         pass
