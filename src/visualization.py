@@ -120,12 +120,12 @@ def create_map1(validated_trip_data, canceled_trip_data, start_time, end_time, f
 
     else:
         empty_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=validated_summary,
-        get_position=[0, 0],
-        get_color=[0, 0, 0, 0],
-        get_radius=0,
-    )
+            "ScatterplotLayer",
+            data=validated_summary,
+            get_position=[0, 0],
+            get_color=[0, 0, 0, 0],
+            get_radius=0,
+        )
     
         deck = pdk.Deck(
             layers=[empty_layer],
@@ -138,12 +138,12 @@ def create_map1(validated_trip_data, canceled_trip_data, start_time, end_time, f
     
     #TODO: FIND A DEFAULT VALUE --> Where Viz looks good! 
     st.title("Top 5 Pickup-Dropoff Pairs")
-    top_5_pairs = combined_summary.head(5)
+    top_5_pairs = combined_summary.head(10)
     top_5_pairs['Frequency'] = top_5_pairs['Frequency'].astype(int)
     top_5_pairs['Cancellation_Rate'] = top_5_pairs['Cancellation_Rate'].round(2)
     top_5_pairs['Total_trip'] = top_5_pairs['Total_trip'].astype(int)
 
-    st.table(
+    st.dataframe(
         top_5_pairs[['pickup_name', 'name_dropoff', 'Frequency', 'Cancellation_Rate', 'Total_trip']].rename(
             columns={
                 'pickup_name': 'Pickup Location',
@@ -152,7 +152,8 @@ def create_map1(validated_trip_data, canceled_trip_data, start_time, end_time, f
                 'Cancellation_Rate': 'Cancellation Rate (%)',
                 'Total_trip': 'Total Bookings'
             }
-        )
+        ),
+        use_container_width=True
     )
 
 
@@ -253,14 +254,15 @@ def demand_heatmap(dataset, time_hour, day_of_week):
 
     with table_col:
         st.markdown('<h2 style="font-size: 24px; color: #00000;">Most Demanded Stops</h2>', unsafe_allow_html=True)
-        top_5_pairs = demand_data.head()
-        st.table(
+        top_5_pairs = demand_data.head(10)
+        st.dataframe(
             top_5_pairs[['pickup_name', 'demand']].rename(
                 columns={
                     'pickup_name': 'Stop Name',
                     'demand': 'Demand %'
                 }
-            ).reset_index(drop=True)
+            ).reset_index(drop=True), 
+            use_container_width=True
         )
 
     st.markdown("""
@@ -293,6 +295,9 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
     if days_of_week:
         route_dataset = route_dataset[route_dataset["Actual Pickup Time"].dt.strftime('%A').isin(days_of_week)]
 
+    initial_latitude = route_dataset["pickup_latitude"].mean() 
+    initial_longitude = route_dataset["pickup_longitude"].mean() 
+
     # fetch time of travel in minutes 
     route_dataset['Actual Pickup Time'] = pandas.to_datetime(route_dataset['Actual Pickup Time'])
     route_dataset['Actual Dropoff Time'] = pandas.to_datetime(route_dataset['Actual Dropoff Time'])
@@ -310,14 +315,15 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
 
     # calculate revenue (2 euro per person)
     df_with_routes['revenue'] = df_with_routes['passenger_count'] * 2
-    df_with_routes['avg_passenger_count'] = df_with_routes['passenger_count'] / df_with_routes['Frequency']
-    df_with_routes['avg_revenue'] = 2 * df_with_routes['avg_passenger_count']
-    df_with_routes['avg_travel_time'] = df_with_routes['travel_time'] / df_with_routes['Frequency']
+    df_with_routes['avg_passenger_count'] = (df_with_routes['passenger_count'] / df_with_routes['Frequency']).astype(float).round(2)
+    df_with_routes['avg_revenue'] = (2 * df_with_routes['avg_passenger_count']).astype(float).round(2)
+    df_with_routes['avg_travel_time'] = (df_with_routes['travel_time'] / df_with_routes['Frequency']).astype(float).round(2)
 
     line_data = []
     MAX_FREQ = int(df_with_routes["revenue"].max())
-    for path, pickup_name, frequency, revenue, avg_passenger_count, avg_revenue, avg_travel_time in zip(df_with_routes["route"].apply(eval), 
+    for path, pickup_name, dropoff_name, frequency, revenue, avg_passenger_count, avg_revenue, avg_travel_time in zip(df_with_routes["route"].apply(eval), 
                                                     df_with_routes["pickup_name"],
+                                                    df_with_routes["name_dropoff"],
                                                     df_with_routes["Frequency"],
                                                     df_with_routes["revenue"],
                                                     df_with_routes["avg_passenger_count"],
@@ -338,7 +344,8 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
                     "avg_passenger_count": avg_passenger_count,
                     "avg_revenue": avg_revenue,
                     "avg_travel_time": avg_travel_time,
-                    "pickup_name": pickup_name
+                    "pickup_name": pickup_name,
+                    "dropoff_name": dropoff_name
             })
 
     # # # RGBA value generated in Javascript by deck.gl's Javascript expression parser
@@ -386,8 +393,8 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
 
     linelayer_tooltip = {
         "html": """</b>Pickup = {pickup_name}<br/><br/>
-                </b>Dropoff = {name_dropoff}<br/><br/>
-                </b>Frequency = {Frequency}<br/><br/>
+                </b>Dropoff = {dropoff_name}<br/><br/>
+                </b>Frequency = {frequency}<br/><br/>
                 </b>Avg Passenger Count = {avg_passenger_count}<br/><br/>
                 </b>Avg Revenue = {avg_revenue}<br/><br/>
                 </b>Avg Time Taken = {avg_travel_time}<br/><br/>
@@ -418,18 +425,23 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
 
     layers = [scatterplot, line_layer]
 
-    INITIAL_VIEW_STATE = pdk.ViewState(latitude=df_with_routes["pickup_latitude"].mean(), longitude=df_with_routes["pickup_longitude"].mean(), zoom=11, pitch=50)
+    valid_rows = df_with_routes.dropna()
+    if not valid_rows.empty:
+        INITIAL_VIEW_STATE = pdk.ViewState(latitude=df_with_routes["pickup_latitude"].mean(), longitude=df_with_routes["pickup_longitude"].mean(), zoom=11, pitch=50)
+        r = pdk.Deck(layers=layers, initial_view_state=INITIAL_VIEW_STATE, map_style="dark")
+    else:
+        INITIAL_VIEW_STATE = pdk.ViewState(latitude=initial_latitude, longitude=initial_longitude, zoom=11, pitch=50)
+        r = pdk.Deck(initial_view_state=INITIAL_VIEW_STATE, map_style="dark")
 
-    r = pdk.Deck(layers=layers, initial_view_state=INITIAL_VIEW_STATE, map_style="dark")
     st.pydeck_chart(r)
 
+    # Table
     df_with_routes = df_with_routes.sort_values(by="revenue", ascending=False)
     df_with_routes = df_with_routes[["pickup_name", "pickup_district", "name_dropoff", "district_dropoff", "Frequency",
                                      "passenger_count", "revenue", "avg_travel_time"]]
-    df_with_routes = df_with_routes.head()
-    
+    df_with_routes = df_with_routes.head(10).reset_index(drop=True)
     st.title("Valuable Routes")
-    st.table(
+    st.dataframe(
         df_with_routes.rename(
                 columns={
                     'pickup_name': 'Pickup Stop',
@@ -438,8 +450,9 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
                     'district_dropoff': 'Dropoff District',
                     'Frequency': 'Trip Frequency',
                     'passenger_count': 'Total Passenger Count',
-                    'revenue': 'Total Revenue',
-                    'avg_travel_time': 'Avg Travel Taken',
+                    'revenue': 'Total Revenue (€)',
+                    'avg_travel_time': 'Avg Travel Time (min)',
                 }
-        )
+        ),
+        use_container_width=True
     )

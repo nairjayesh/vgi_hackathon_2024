@@ -55,3 +55,7 @@ def load_dataset():
 @streamlit.cache_data
 def load_bus_data():
     return pandas.read_excel(Path("./dataset/FLEXI_bus_stops.xls"))
+
+@streamlit.cache_data
+def load_mapped_dataset():
+    return pandas.read_excel(Path("./dataset/weather_data.xlsx"))

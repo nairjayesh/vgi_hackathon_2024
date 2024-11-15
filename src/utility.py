@@ -1,3 +1,9 @@
+import pandas
+import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit
+import numpy as np
+
 def get_icon_url(passengers):
     try:
         passengers = int(passengers)
@@ -31,3 +37,31 @@ def get_project_description():
 
     This project aims to enhance the understanding of public transportation usage patterns, supporting data-driven decision-making for improved transit services.
     """
+
+def get_multibar_graph_data(dataset):
+    col_1, col_2 = streamlit.columns([1, 1])
+    with col_1:
+        # Step 2: Group by both pickup_day and passenger_status to get the counts for valid and cancelled bookings
+        status_counts = dataset.groupby(['pickup_day', 'passenger_status'])['booking_id'].count().unstack(fill_value=0)
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']  # Define the order for the days of the week
+        status_counts = status_counts.reindex(day_order)
+
+        # Step 2: Plot the data as a multiline graph
+        fig, ax = plt.subplots(figsize=(6, 4))
+         
+        # Plot lines for 'Cancelled' and 'Trip completed'
+        status_counts['Cancelled'].plot(ax=ax, label='Cancelled', color='red', marker='o')
+        status_counts['Trip completed'].plot(ax=ax, label='Trip completed', color='green', marker='o')
+
+        # Adding labels and title
+        ax.set_xlabel('Day of the Week')
+        ax.set_ylabel('Count')
+        ax.set_title('Bookings vs Cancellation')
+        # ax.legend()
+
+        # Step 3: Show plot in Streamlit
+        streamlit.pyplot(fig)
+    with col_2:
+        pass
+    
+    return status_counts
