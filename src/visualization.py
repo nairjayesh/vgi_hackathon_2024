@@ -138,12 +138,12 @@ def create_map1(validated_trip_data, canceled_trip_data, start_time, end_time, f
     
     #TODO: FIND A DEFAULT VALUE --> Where Viz looks good! 
     st.title("Top 5 Pickup-Dropoff Pairs")
-    top_5_pairs = combined_summary.head(5)
+    top_5_pairs = combined_summary.head(10)
     top_5_pairs['Frequency'] = top_5_pairs['Frequency'].astype(int)
     top_5_pairs['Cancellation_Rate'] = top_5_pairs['Cancellation_Rate'].round(2)
     top_5_pairs['Total_trip'] = top_5_pairs['Total_trip'].astype(int)
 
-    st.table(
+    st.dataframe(
         top_5_pairs[['pickup_name', 'name_dropoff', 'Frequency', 'Cancellation_Rate', 'Total_trip']].rename(
             columns={
                 'pickup_name': 'Pickup Location',
@@ -152,7 +152,8 @@ def create_map1(validated_trip_data, canceled_trip_data, start_time, end_time, f
                 'Cancellation_Rate': 'Cancellation Rate (%)',
                 'Total_trip': 'Total Bookings'
             }
-        )
+        ),
+        use_container_width=True
     )
 
 
@@ -253,14 +254,15 @@ def demand_heatmap(dataset, time_hour, day_of_week):
 
     with table_col:
         st.markdown('<h2 style="font-size: 24px; color: #00000;">Most Demanded Stops</h2>', unsafe_allow_html=True)
-        top_5_pairs = demand_data.head()
-        st.table(
+        top_5_pairs = demand_data.head(10)
+        st.dataframe(
             top_5_pairs[['pickup_name', 'demand']].rename(
                 columns={
                     'pickup_name': 'Stop Name',
                     'demand': 'Demand %'
                 }
-            ).reset_index(drop=True)
+            ).reset_index(drop=True), 
+            use_container_width=True
         )
 
     st.markdown("""
@@ -435,9 +437,9 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
     df_with_routes = df_with_routes.sort_values(by="revenue", ascending=False)
     df_with_routes = df_with_routes[["pickup_name", "pickup_district", "name_dropoff", "district_dropoff", "Frequency",
                                      "passenger_count", "revenue", "avg_travel_time"]]
-    df_with_routes = df_with_routes.head().reset_index(drop=True)
+    df_with_routes = df_with_routes.head(10).reset_index(drop=True)
     st.title("Valuable Routes")
-    st.table(
+    st.dataframe(
         df_with_routes.rename(
                 columns={
                     'pickup_name': 'Pickup Stop',
@@ -449,5 +451,6 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
                     'revenue': 'Total Revenue (€)',
                     'avg_travel_time': 'Avg Travel Time (min)',
                 }
-        )
+        ),
+        use_container_width=True
     )
