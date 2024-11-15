@@ -9,8 +9,7 @@ import pandas
 import os
 import streamlit as st
 from src.utility import get_project_description
- 
- 
+
 # streamlit page start config - dont remove this 
 st.set_page_config(page_title="VGI Dashboard", page_icon="🚌", layout="wide")
 
