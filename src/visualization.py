@@ -99,8 +99,8 @@ def create_map1(validated_trip_data, canceled_trip_data, start_time, end_time, f
             latitude=initial_latitude,
             longitude=initial_longitude,
             zoom=11, 
-            pitch=50,
-            bearing=180 
+            pitch=10,
+            bearing=240 
         )
     valid_rows = filtered_df.dropna(subset=["pickup_latitude", "pickup_longitude", "longitude_dropoff", "latitude_dropoff"]) 
 
@@ -528,5 +528,7 @@ def time_series_analysis(validated_trip_data, canceled_trip_data, start_time, en
     )
     
     # Streamlit display
-    st.title("Churn Rate Analysis Across Districts")
+    st.subheader("Churn Rate Analysis Across Districts")
     st.plotly_chart(fig, use_container_width=True)
+    
+    return daily_counts

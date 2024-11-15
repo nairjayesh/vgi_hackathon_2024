@@ -26,16 +26,14 @@ def get_icon_url(passengers):
     
 def get_project_description():
     return """
-    #### This initiative is dedicated to visualizing the spatio-temporal behavior of VGI-Flexi users as part of the VGI Challenge. \
-    By leveraging advanced data analysis and visualization techniques, the project provides insights into the dynamic patterns of bus ridership \
-    across various locations and times. Key features include:
+    #### How VGI-Flexi users move.  
 
-    - **Demand Heatmap**: Visualize the most popular bus stops, identifying areas of high demand at different times of the day.
-    - **Demand Trend Analysis**: Track and analyze ridership patterns over time, helping to identify trends and fluctuations.
-    - **Route Visualization**: Explore the paths taken by buses, allowing for a deeper understanding of service coverage and efficiency.
+    - **Dynamic Demand Analysis**: Visualize the most popular bus stops, identifying areas of high demand at different times of the day.
+    - **Dynamic Trip Analysis**: Track and analyze ridership patterns over time, helping to identify trends and fluctuations.
+    - **Dynamic Revenue Analysis**: Explore the paths taken by buses, allowing for a deeper understanding of service coverage and efficiency.
     - **Report Generation**: Automatically generate comprehensive reports, summarizing the findings from the demand and route analysis for further insights and decision-making.
 
-    This project aims to enhance the understanding of public transportation usage patterns, supporting data-driven decision-making for improved transit services.
+    Part of official VGI Hackathon 2024.
     """
 
 def get_multibar_graph_data(dataset):

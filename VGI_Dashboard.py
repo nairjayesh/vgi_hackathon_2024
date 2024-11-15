@@ -27,10 +27,10 @@ def main():
 
     menu_id = hc.nav_bar(menu_definition=menu_data, home_name='Overview')
     if menu_id == "Overview":
-        st.title("About the Project")
+        st.title("Discover.")
         st.markdown(get_project_description())
     elif menu_id == "Demand Heatmap":
-        st.title("Mapping Demand: Uncovering VGI FLEXI Bus Stop Hotspots")
+        st.title("Dynamic Demand Analysis")
         col1, col2 = st.columns([3, 1])
         with col1:
             time_hour = st.slider("Time of Day", min_value=0, max_value=23, value=6, step=1, format="%d:00")
@@ -52,37 +52,35 @@ def main():
         dataset, _ = dp.load_dataset()
         viz.demand_heatmap(dataset, time_hour, days_of_week)
     elif menu_id == "Trip Analysis":
-        st.title("Mapping Trip Insights")
+        st.title("Dynamic Trip Insights")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             start_time_hour = st.slider("Pickup Time", min_value=0, max_value=23, value=0, step=2)
         with col2:
             end_time_hour = st.slider("Dropoff Time", min_value=0, max_value=23, value=23, step=2)
         with col3:
-            frequency_threshold = st.slider("Frequency", min_value=0, max_value=100, value=10, step=1)
+            frequency_threshold = st.slider("Completed Trips", min_value=0, max_value=100, value=45, step=1)
         with col4:
             days_of_week = st.multiselect("Days of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 
         validated_trip_dataset, canceled_trip_dataset = dp.load_dataset()
         viz.create_map1(validated_trip_dataset, canceled_trip_dataset, start_time_hour, end_time_hour, frequency_threshold, days_of_week)
     elif menu_id == "Route Visualization":
-        st.title("VGI Flexi Route Map")
+        st.title("Dynamic Revenue Analysis")
         col1, col2, col3 = st.columns(3)
         with col1:
-            start_time_hour = st.slider("Pickup Time", min_value=0, max_value=23, value=0, step=2)
+            start_time_hour = st.slider("Pickup Time", min_value=0, max_value=23, value=8, step=2)
         with col2:
-            end_time_hour = st.slider("Dropoff Time", min_value=0, max_value=23, value=23, step=2)
+            end_time_hour = st.slider("Dropoff Time", min_value=0, max_value=23, value=10, step=2)
         with col3:
-            days_of_week = st.multiselect("Days of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+            days_of_week = st.multiselect("Days of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], default=["Thursday"])
 
         dataset, _ = dp.load_dataset()
         viz.create_map3(dataset, start_time_hour, end_time_hour, days_of_week)
     elif menu_id == "Generate Report":
-        mapped_dataset = dp.load_mapped_dataset()
-        # bargraph
-        sheet1 = get_multibar_graph_data(mapped_dataset)
-
-        st.title("Churn Rate")
+        st.title("Report")
+        # 
+        st.subheader("Churn Rate")
         col1, col2, col3 = st.columns(3)
         with col1:
             start_time_hour = st.slider("Pickup Time", min_value=0, max_value=23, value=0, step=2)
@@ -92,9 +90,14 @@ def main():
             days_of_week = st.multiselect("Days of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 
         validated_dataset, canceled_dataset = dp.load_dataset()
-        viz.time_series_analysis(validated_dataset, canceled_dataset, start_time_hour, end_time_hour, days_of_week)
+        sheet1 = viz.time_series_analysis(validated_dataset, canceled_dataset, start_time_hour, end_time_hour, days_of_week)
+
+        # bargraph
+        st.subheader("Trip Completion Rate")
+        mapped_dataset = dp.load_mapped_dataset()
+        sheet2 = get_multibar_graph_data(mapped_dataset)
+
         report = io.BytesIO()
-        sheet2 = pandas.DataFrame()
         with pandas.ExcelWriter(report, engine='xlsxwriter') as writer:
             sheet1.to_excel(writer, sheet_name='Sheet1', index=False)
             sheet2.to_excel(writer, sheet_name='Sheet2', index=False)
