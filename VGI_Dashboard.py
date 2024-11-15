@@ -77,7 +77,17 @@ def main():
         dataset, _ = dp.load_dataset()
         viz.create_map3(dataset, start_time_hour, end_time_hour, days_of_week)
     elif menu_id == "Generate Report":
-        # download button
+        st.title("Churn Rate")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            start_time_hour = st.slider("Pickup Time", min_value=0, max_value=23, value=0, step=2)
+        with col2:
+            end_time_hour = st.slider("Dropoff Time", min_value=0, max_value=23, value=23, step=2)
+        with col3:
+            days_of_week = st.multiselect("Days of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+
+        validated_dataset, canceled_dataset = dp.load_dataset()
+        viz.time_series_analysis(validated_dataset, canceled_dataset, start_time_hour, end_time_hour, days_of_week)
         st.download_button(
             label="Download",
             data=pandas.DataFrame().to_csv(index=False), 

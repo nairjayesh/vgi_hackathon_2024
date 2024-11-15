@@ -6,6 +6,9 @@ import numpy as np
 import pandas
 import src.data_preprocessing as dp
 from src.utility import get_icon_url
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+import plotly.express as px
 
 def calculate_color(color_val):
     color_val = np.clip(color_val, 0, 1)
@@ -346,20 +349,6 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
                     "pickup_name": pickup_name
             })
 
-    # # # RGBA value generated in Javascript by deck.gl's Javascript expression parser
-    # GET_COLOR_JS = [
-    #     "255 * (1 - segment_index / total_segments)",   # Red fades out along the path
-    #     "128 * (segment_index / total_segments)",       # Green increases
-    #     "255 * (segment_index / total_segments)",       # Blue increases
-    #     "255 * (1 - segment_index / total_segments)"    # Alpha decreases
-    # ]
-
-    # JS_COLOR = [
-    #     "50 * color_val",        # Red intensity based on frequency
-    #     "255 * (1 - color_val)",   # Subdued green for lower frequencies
-    #     "50 * (1 - color_val)",   # Subdued blue for lower frequencies
-    #     "255 * color_val"         # Opacity based on frequency (fades lower frequencies)
-    # ]
     JS_COLOR = [
         "128 * Math.pow(color_val, 0.5)",         # // Red intensity with a square root to soften the transition
         "255 * (1 - Math.pow(color_val, 0.5))",   # // Subdued green, square-root for a more gradual shift
@@ -454,3 +443,88 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
         ),
         use_container_width=True
     )
+
+def time_series_analysis(validated_trip_data, canceled_trip_data, start_time, end_time, days_of_week):
+    # Define day mapping for filtering
+    day_mapping = {
+        "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+        "Friday": 4, "Saturday": 5, "Sunday": 6
+    }
+    
+    # Define color mapping based on churn rate
+    def color_based_on_churn(churn_rate):
+        if churn_rate > 60:
+            return "red"
+        elif churn_rate > 40:
+            return "orange"
+        else:
+            return "green"
+    
+    # Filter data by specified time period
+    validated_trip_data = validated_trip_data[(validated_trip_data["Pickup Hour"] >= start_time) & (validated_trip_data["Dropoff Hour"] <= end_time)]
+    canceled_trip_data = canceled_trip_data[(canceled_trip_data["Pickup Hour"] >= start_time) & (canceled_trip_data["Dropoff Hour"] <= end_time)]
+
+    # Filter by selected days of the week
+    if days_of_week:
+        selected_days = [day_mapping[day] for day in days_of_week]
+        validated_trip_data = validated_trip_data[validated_trip_data["Pickup Day"].isin(selected_days)]
+        canceled_trip_data = canceled_trip_data[canceled_trip_data["Pickup Day"].isin(selected_days)]
+    
+    # Group by district and date to aggregate all bus stops within each district
+    validated_counts = validated_trip_data.groupby(['Pickup Day', 'pickup_district']).size().reset_index(name='validated_trips')
+    canceled_counts = canceled_trip_data.groupby(['Pickup Day', 'pickup_district']).size().reset_index(name='canceled_trips')
+    
+    # Merge and calculate churn rate
+    daily_counts = pd.merge(validated_counts, canceled_counts, on=['Pickup Day', 'pickup_district'], how='outer').fillna(0)
+    daily_counts['total_trips'] = daily_counts['validated_trips'] + daily_counts['canceled_trips']
+    daily_counts['churn_rate'] = (daily_counts['canceled_trips'] / daily_counts['total_trips']) * 100
+    daily_counts['churn_rate'].fillna(0, inplace=True)  # Fill NaN churn rates with 0
+
+    # Calculate the min and max churn rates to set consistent Y-axis range
+    min_churn = daily_counts['churn_rate'].min()
+    max_churn = daily_counts['churn_rate'].max()
+
+    # Create orthogonal grid layout for districts
+    districts = daily_counts['pickup_district'].unique()
+    rows = cols = int(len(districts) ** 0.5) + 1
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=districts)
+    
+    for i, district in enumerate(districts):
+        district_data = daily_counts[daily_counts['pickup_district'] == district]
+        
+        # Calculate the color based on average churn for the district
+        avg_churn = district_data['churn_rate'].mean()
+        color = color_based_on_churn(avg_churn)
+
+        # Plot aggregated churn rate for the district
+        scatter = go.Scatter(
+            x=district_data["Pickup Day"],
+            y=district_data["churn_rate"],
+            mode="lines+markers",
+            line=dict(color=color, width=2),
+            name=district,
+            hovertemplate=f"<b>District: {district}</b><br>Date: {{x}}<br>Churn Rate: {{y:.2f}}%"
+        )
+        
+        # Determine subplot row and column positions
+        row = (i // cols) + 1
+        col = (i % cols) + 1
+        fig.add_trace(scatter, row=row, col=col)
+
+        # Set consistent X and Y axis scales for all subplots
+        fig.update_xaxes(title_text="Time", row=row, col=col)
+        fig.update_yaxes(title_text="Churn Rate (%)", range=[min_churn, max_churn], row=row, col=col)
+
+    # Update layout for the entire figure
+    fig.update_layout(
+        title="Churn Rate Analysis by District",
+        height=1000,
+        width=1000,
+        template="plotly_dark",
+        showlegend=False,
+        hovermode="x unified"
+    )
+    
+    # Streamlit display
+    st.title("Churn Rate Analysis Across Districts")
+    st.plotly_chart(fig, use_container_width=True)
