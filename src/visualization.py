@@ -324,8 +324,9 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
 
     line_data = []
     MAX_FREQ = int(df_with_routes["revenue"].max())
-    for path, pickup_name, frequency, revenue, avg_passenger_count, avg_revenue, avg_travel_time in zip(df_with_routes["route"].apply(eval), 
+    for path, pickup_name, dropoff_name, frequency, revenue, avg_passenger_count, avg_revenue, avg_travel_time in zip(df_with_routes["route"].apply(eval), 
                                                     df_with_routes["pickup_name"],
+                                                    df_with_routes["name_dropoff"],
                                                     df_with_routes["Frequency"],
                                                     df_with_routes["revenue"],
                                                     df_with_routes["avg_passenger_count"],
@@ -346,7 +347,8 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
                     "avg_passenger_count": avg_passenger_count,
                     "avg_revenue": avg_revenue,
                     "avg_travel_time": avg_travel_time,
-                    "pickup_name": pickup_name
+                    "pickup_name": pickup_name,
+                    "dropoff_name": dropoff_name
             })
 
     JS_COLOR = [
@@ -380,8 +382,8 @@ def create_map3(route_dataset, start_time, end_time, days_of_week):
 
     linelayer_tooltip = {
         "html": """</b>Pickup = {pickup_name}<br/><br/>
-                </b>Dropoff = {name_dropoff}<br/><br/>
-                </b>Frequency = {Frequency}<br/><br/>
+                </b>Dropoff = {dropoff_name}<br/><br/>
+                </b>Frequency = {frequency}<br/><br/>
                 </b>Avg Passenger Count = {avg_passenger_count}<br/><br/>
                 </b>Avg Revenue = {avg_revenue}<br/><br/>
                 </b>Avg Time Taken = {avg_travel_time}<br/><br/>

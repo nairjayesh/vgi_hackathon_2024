@@ -6,9 +6,10 @@ from datetime import time
 import src.data_preprocessing as dp
 import src.visualization as viz
 import pandas
+import io
 import os
 import streamlit as st
-from src.utility import get_project_description
+from src.utility import get_project_description, get_multibar_graph_data
  
  
 # streamlit page start config - dont remove this 
@@ -77,6 +78,10 @@ def main():
         dataset, _ = dp.load_dataset()
         viz.create_map3(dataset, start_time_hour, end_time_hour, days_of_week)
     elif menu_id == "Generate Report":
+        mapped_dataset = dp.load_mapped_dataset()
+        # bargraph
+        sheet1 = get_multibar_graph_data(mapped_dataset)
+
         st.title("Churn Rate")
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -88,11 +93,17 @@ def main():
 
         validated_dataset, canceled_dataset = dp.load_dataset()
         viz.time_series_analysis(validated_dataset, canceled_dataset, start_time_hour, end_time_hour, days_of_week)
+        report = io.BytesIO()
+        sheet2 = pandas.DataFrame()
+        with pandas.ExcelWriter(report, engine='xlsxwriter') as writer:
+            sheet1.to_excel(writer, sheet_name='Sheet1', index=False)
+            sheet2.to_excel(writer, sheet_name='Sheet2', index=False)
+        report.seek(0)
         st.download_button(
-            label="Download",
-            data=pandas.DataFrame().to_csv(index=False), 
-            file_name="report.csv", 
-            mime="text/csv",
+            label="Download Report",
+            data=report,
+            file_name="report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
 
